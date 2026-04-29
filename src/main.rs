@@ -1,6 +1,5 @@
 use clap::Parser;
 use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
 };
@@ -45,7 +44,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnableMouseCapture)?;
+
+    // Panic hook: ensure terminal is restored even if app panics
+    let original_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let _ = disable_raw_mode();
+        let _ = execute!(io::stdout(), Clear(ClearType::All));
+        original_hook(info);
+    }));
 
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::with_options(
@@ -55,16 +61,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
     )?;
 
-    app.run(&mut terminal);
+    let boss_key = app.run(&mut terminal).is_ok_and(|_| app.boss_key);
 
     // Restore terminal
     disable_raw_mode()?;
     let mut stdout = io::stdout();
-    if app.boss_key {
-        execute!(stdout, DisableMouseCapture, Clear(ClearType::All))?;
+    if boss_key {
+        execute!(stdout, Clear(ClearType::All))?;
         print!("\r\n");
     } else {
-        execute!(stdout, DisableMouseCapture)?;
         println!();
     }
 

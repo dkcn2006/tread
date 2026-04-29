@@ -3,6 +3,7 @@ use ratatui::{
     backend::Backend,
     Terminal,
 };
+use unicode_width::UnicodeWidthStr;
 use std::time::Duration;
 
 use crate::bookmark::{BookmarkEntry, Bookmarks};
@@ -46,7 +47,7 @@ impl App {
         if let Some(entry) = bookmarks.get(&book.file_path) {
             current_line = entry.line_index.min(book.lines.len().saturating_sub(1));
             sub_offset = entry.sub_offset;
-            current_mode = DisplayMode::from_index(entry.mode);
+            current_mode = entry.mode;
         }
 
         App {
@@ -66,20 +67,30 @@ impl App {
         }
     }
 
-    pub fn run<B: Backend>(&mut self, terminal: &mut Terminal<B>) {
+    pub fn run<B: Backend>(
+        &mut self,
+        terminal: &mut Terminal<B>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         loop {
-            terminal
-                .draw(|frame| {
-                    ui::render(frame, self);
-                })
-                .unwrap();
+            terminal.draw(|frame| {
+                ui::render(frame, self);
+            })?;
 
-            if event::poll(Duration::from_millis(250)).unwrap() {
-                if let Ok(Event::Key(key)) = event::read() {
-                    match self.input_mode {
-                        InputMode::Normal => self.handle_normal_key(key),
-                        InputMode::Search => self.handle_search_key(key),
-                        InputMode::ChapterList => self.handle_chapter_key(key),
+            if event::poll(Duration::from_millis(250))? {
+                if let Ok(event) = event::read() {
+                    match event {
+                        Event::Key(key) => {
+                            match self.input_mode {
+                                InputMode::Normal => self.handle_normal_key(key),
+                                InputMode::Search => self.handle_search_key(key),
+                                InputMode::ChapterList => self.handle_chapter_key(key),
+                            }
+                        }
+                        Event::Resize(_, h) => {
+                            self.terminal_width = h;
+                            self.sub_offset = 0;
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -89,6 +100,7 @@ impl App {
                 break;
             }
         }
+        Ok(())
     }
 
     fn save_bookmark(&mut self) {
@@ -97,7 +109,7 @@ impl App {
             BookmarkEntry {
                 line_index: self.current_line,
                 sub_offset: self.sub_offset,
-                mode: self.mode.to_index(),
+                mode: self.mode,
             },
         );
         self.bookmarks.save();
@@ -115,7 +127,12 @@ impl App {
                 self.next_lines(1, content_width)
             }
             KeyCode::Char('k') | KeyCode::Up => self.prev_lines(1, content_width),
-            KeyCode::Char(' ') => self.next_lines(self.display_lines, content_width),
+            KeyCode::Char(' ') | KeyCode::PageDown => {
+                self.next_lines(self.display_lines, content_width)
+            }
+            KeyCode::Char('b') | KeyCode::PageUp => {
+                self.prev_lines(self.display_lines, content_width)
+            }
             KeyCode::Home => {
                 self.current_line = 0;
                 self.sub_offset = 0;
@@ -243,9 +260,37 @@ impl App {
     fn estimate_content_width(&self) -> usize {
         let width = self.terminal_width as usize;
         match self.mode {
-            DisplayMode::Log => width.saturating_sub(29).max(1),
-            DisplayMode::Minimal => width.saturating_sub(20).max(1),
-            DisplayMode::Comment => width.saturating_sub(20).max(1),
+            DisplayMode::Log => {
+                let prefix_width = 29usize; // [YYYY-MM-DD HH:MM:SS] LEVEL 
+                width.saturating_sub(prefix_width).max(1)
+            }
+            DisplayMode::Minimal => {
+                let progress_text = format!("[{:5}/{:5}]", self.current_line, self.book.lines.len());
+                let progress_width = progress_text.width();
+                width.saturating_sub(progress_width).max(1)
+            }
+            DisplayMode::Comment => {
+                let prefix = "// ";
+                let prefix_width = prefix.width();
+                let total_lines = self.book.lines.len();
+                let progress_pct = if total_lines > 0 {
+                    (self.current_line as f64 / total_lines as f64) * 100.0
+                } else {
+                    0.0
+                };
+                let current_chapter = self
+                    .book
+                    .chapters
+                    .iter()
+                    .enumerate()
+                    .rev()
+                    .find(|(_, ch)| ch.line_index <= self.current_line)
+                    .map(|(i, _)| i + 1)
+                    .unwrap_or(0);
+                let suffix = format!(" [Ch.{} | {:.1}%]", current_chapter, progress_pct);
+                let suffix_width = suffix.width();
+                width.saturating_sub(prefix_width + suffix_width).max(1)
+            }
         }
     }
 }

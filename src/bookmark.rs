@@ -1,3 +1,4 @@
+use crate::config::DisplayMode;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -5,7 +6,7 @@ use std::collections::HashMap;
 pub struct BookmarkEntry {
     pub line_index: usize,
     pub sub_offset: usize,
-    pub mode: usize,
+    pub mode: DisplayMode,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -20,23 +20,6 @@ impl DisplayMode {
         }
     }
 
-    pub fn to_index(self) -> usize {
-        match self {
-            DisplayMode::Log => 0,
-            DisplayMode::Minimal => 1,
-            DisplayMode::Comment => 2,
-        }
-    }
-
-    pub fn from_index(index: usize) -> Self {
-        match index {
-            0 => DisplayMode::Log,
-            1 => DisplayMode::Minimal,
-            2 => DisplayMode::Comment,
-            _ => DisplayMode::Log,
-        }
-    }
-
     pub fn label(self) -> &'static str {
         match self {
             DisplayMode::Log => "log",

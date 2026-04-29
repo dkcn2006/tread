@@ -1,5 +1,6 @@
 use regex::Regex;
 use std::path::Path;
+use std::sync::LazyLock;
 use unicode_width::UnicodeWidthChar;
 
 #[derive(Debug, Clone)]
@@ -11,9 +12,16 @@ pub struct Chapter {
 #[derive(Debug, Clone)]
 pub struct Book {
     pub lines: Vec<String>,
+    pub lowercase_lines: Vec<String>,
     pub chapters: Vec<Chapter>,
     pub file_path: String,
 }
+
+static CHAPTER_PATTERNS: LazyLock<[Regex; 3]> = LazyLock::new(|| [
+    Regex::new(r"^[\s]*第[\s]*[一二三四五六七八九十零百千万亿\d]+[\s]*[章回节卷篇][\s]*.*$").unwrap(),
+    Regex::new(r"^(?i)[\s]*chapter[\s]*\d+.*$").unwrap(),
+    Regex::new(r"^[\s]*[卷篇][\s]*[一二三四五六七八九十零百千万亿\d]+[\s]*.*$").unwrap(),
+]);
 
 impl Book {
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
@@ -26,9 +34,14 @@ impl Book {
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
             .collect();
+        if lines.is_empty() {
+            return Err("文件内容为空或仅包含空白行".into());
+        }
+        let lowercase_lines: Vec<String> = lines.iter().map(|s| s.to_lowercase()).collect();
         let chapters = parse_chapters(&lines);
         Ok(Book {
             lines,
+            lowercase_lines,
             chapters,
             file_path,
         })
@@ -96,7 +109,7 @@ impl Book {
         }
         for offset in 1..=len {
             let idx = (start + offset) % len;
-            if self.lines[idx].to_lowercase().contains(&q) {
+            if self.lowercase_lines[idx].contains(&q) {
                 return Some(idx);
             }
         }
@@ -137,19 +150,13 @@ fn decode_text(raw: &[u8]) -> String {
 }
 
 fn parse_chapters(lines: &[String]) -> Vec<Chapter> {
-    let patterns = [
-        Regex::new(r"^[\s]*第[\s]*[一二三四五六七八九十零百千万亿\d]+[\s]*[章回节卷篇][\s]*.*$").unwrap(),
-        Regex::new(r"^[\s]*[Cc][Hh][Aa][Pp][Tt][Ee][Rr][\s]*\d+.*$").unwrap(),
-        Regex::new(r"^[\s]*[卷篇][\s]*[一二三四五六七八九十零百千万亿\d]+[\s]*.*$").unwrap(),
-    ];
-
     let mut chapters = Vec::new();
     for (i, line) in lines.iter().enumerate() {
         let display_width: usize = line.chars().map(|c| c.width().unwrap_or(0)).sum();
         if display_width > 60 {
             continue;
         }
-        for pat in &patterns {
+        for pat in CHAPTER_PATTERNS.iter() {
             if pat.is_match(line) {
                 chapters.push(Chapter {
                     title: line.clone(),

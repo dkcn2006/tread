@@ -54,13 +54,13 @@ fn render_log(frame: &mut Frame, app: &App) {
             let timestamp = now.format("%Y-%m-%d %H:%M:%S").to_string();
             let level_idx = (app.current_line + i) % 4;
             let level = levels[level_idx];
-            let _level_color = level_colors[level_idx];
+            let level_color = level_colors[level_idx];
 
-            let prefix = format!("[{}] {:5} ", timestamp, level);
             now = now + chrono::Duration::seconds(1);
 
             Line::from(vec![
-                Span::styled(prefix, Style::default().fg(Color::DarkGray)),
+                Span::styled(format!("[{}] ", timestamp), Style::default().fg(Color::DarkGray)),
+                Span::styled(format!("{:5} ", level), Style::default().fg(level_color)),
                 Span::raw(content),
             ])
         })
@@ -164,7 +164,6 @@ fn render_comment(frame: &mut Frame, app: &App) {
 
 fn render_search_overlay(frame: &mut Frame, app: &App) {
     let area = frame.area();
-    let _search_line = format!("/{}", app.search_input);
     let cursor = "_";
 
     let spans = vec![
@@ -186,17 +185,22 @@ fn render_search_overlay(frame: &mut Frame, app: &App) {
 
 fn render_chapter_list(frame: &mut Frame, app: &mut App) {
     let area = frame.area();
-    let items: Vec<ListItem> = app
-        .book
-        .chapters
+    let visible_count = area.height as usize;
+    let total = app.book.chapters.len();
+    let start = app.chapter_cursor.saturating_sub(visible_count.saturating_sub(1) / 2);
+    let end = (start + visible_count).min(total);
+    let start = end.saturating_sub(visible_count); // adjust if end clipped
+
+    let items: Vec<ListItem> = app.book.chapters[start..end]
         .iter()
         .enumerate()
         .map(|(i, ch)| {
-            let prefix = if i == app.chapter_cursor { "> " } else { "  " };
+            let actual_idx = start + i;
+            let prefix = if actual_idx == app.chapter_cursor { "> " } else { "  " };
             ListItem::new(Line::from(vec![
                 Span::styled(
                     prefix,
-                    if i == app.chapter_cursor {
+                    if actual_idx == app.chapter_cursor {
                         Style::default().fg(Color::Yellow)
                     } else {
                         Style::default()
