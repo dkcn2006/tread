@@ -46,6 +46,7 @@ impl Book {
 
         let text = match ext.as_str() {
             "mobi" | "azw" | "azw3" => load_mobi(&path)?,
+            "pdf" => load_pdf(&path)?,
             _ => {
                 let raw = std::fs::read(&path)?;
                 decode_text(&raw)
@@ -148,6 +149,50 @@ fn load_mobi<P: AsRef<Path>>(path: P) -> Result<String, Box<dyn std::error::Erro
     let m = mobi::Mobi::from_path(&path)?;
     let content = m.content_as_string();
     Ok(html_to_text(&content))
+}
+
+/// 解析 PDF 文件，返回纯文本
+fn load_pdf<P: AsRef<Path>>(path: P) -> Result<String, Box<dyn std::error::Error>> {
+    let text = pdf_extract::extract_text(&path)?;
+    Ok(clean_pdf_text(&text))
+}
+
+/// 清理 PDF 提取的文本：合并连续空行、去掉页码标记等
+fn clean_pdf_text(text: &str) -> String {
+    let mut result = String::new();
+    let mut prev_blank = false;
+
+    for line in text.lines() {
+        let trimmed = line.trim();
+
+        // 跳过纯数字行（常见页码）
+        if trimmed.chars().all(|c| c.is_ascii_digit()) {
+            continue;
+        }
+
+        // 跳过常见的页眉页脚标记
+        if trimmed.starts_with("http://")
+            || trimmed.starts_with("https://")
+            || trimmed.starts_with("www.")
+        {
+            continue;
+        }
+
+        if trimmed.is_empty() {
+            if !prev_blank {
+                result.push('\n');
+                prev_blank = true;
+            }
+        } else {
+            if !result.is_empty() && !prev_blank {
+                result.push('\n');
+            }
+            result.push_str(trimmed);
+            prev_blank = false;
+        }
+    }
+
+    result
 }
 
 /// 简单但有效的 HTML → 纯文本转换
