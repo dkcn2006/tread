@@ -22,6 +22,24 @@
 
 `tread` 提供三种伪装形态，按 `t` 键循环切换：
 
+### Log 模式
+
+最常用，看起来像后端日志输出：
+
+![Log 模式](assets/mode-log.png)
+
+### Minimal 模式
+
+极简，像一条普通的命令输出：
+
+![Minimal 模式](assets/mode-minimal.png)
+
+### Comment 模式
+
+像代码注释，适合前端项目：
+
+![Comment 模式](assets/mode-comment.png)
+
 | 模式 | 效果 | 适用场景 |
 |------|------|---------|
 | **Log** | `[时间戳] INFO  小说内容...` | 最常用，看起来像后端日志 |
