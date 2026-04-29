@@ -14,3 +14,7 @@ Thumbs.db
 *.swp
 *~
 *.bak
+
+# Novel files (copyrighted, not committed)
+/txt/
+*.txt

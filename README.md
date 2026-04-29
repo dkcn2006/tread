@@ -75,15 +75,17 @@ export PATH="$PATH:$(pwd)/target/release"
 
 ## 使用
 
+项目仓库的 `txt/` 目录下已预置了示例小说（需自行放置你的 `.txt` 文件，该目录已被 `.gitignore` 忽略）。
+
 ```bash
 # 基本用法
-tread novel.txt
+tread "txt/冰与火之歌一：权利的游戏.txt"
 
 # 指定模式（log / minimal / comment）
-tread novel.txt --mode comment
+tread "txt/冰与火之歌一：权利的游戏.txt" --mode comment
 
 # 显示 2 行（默认 1 行）
-tread novel.txt --lines 2
+tread "txt/冰与火之歌一：权利的游戏.txt" --lines 2
 ```
 
 ### 键位
