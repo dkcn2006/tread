@@ -50,31 +50,7 @@
 
 ## 环境配置
 
-### 1. 安装 Rust
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source $HOME/.cargo/env
-```
-
-### 2. 配置 Cargo 镜像（可选，国内用户推荐）
-
-创建或编辑 `~/.cargo/config`：
-
-```toml
-[source.crates-io]
-registry = "https://github.com/rust-lang/crates.io-index"
-replace-with = 'ustc'
-
-[source.ustc]
-registry = "git://mirrors.ustc.edu.cn/crates.io-index"
-```
-
-国内常用镜像：
-- **USTC**: `git://mirrors.ustc.edu.cn/crates.io-index`
-- **TUNA**: `https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git`
-
-### 3. 一键全局安装（推荐）
+### 一键安装（推荐）
 
 ```bash
 git clone https://github.com/dkcn2006/tread.git
@@ -82,30 +58,59 @@ cd tread
 ./install.sh
 ```
 
-脚本会自动完成：
-1. 检测 Rust 工具链
-2. 将 cargo 配置持久化到 `~/.bashrc` / `~/.zshrc`
-3. 编译 release 版本
-4. 安装到 `~/.cargo/bin/`（全局可用）
-5. 验证安装
+脚本会自动完成全部环境配置：
+1. **安装 Rust** — 检测到未安装时自动下载 rustup 并安装
+2. **配置 Cargo 镜像** — 交互式询问 / 非交互环境自动配置 USTC 加速镜像
+3. **持久化 PATH** — 将 cargo 环境写入 `~/.bashrc` / `~/.zshrc`
+4. **编译安装** — `cargo install --path .` 编译 release 版本
+5. **全局可用** — 确保 `~/.cargo/bin` 在 PATH 中
+6. **验证** — 安装后执行 `tread --help` 确认可用
 
-> 首次编译需几分钟，取决于网络和设备性能。
+> 首次编译需几分钟，取决于网络和设备性能。国内用户建议使用镜像加速。
 
-### 3b. 手动编译（想自己控制安装位置）
+**非交互模式（CI / 自动化脚本）：**
+```bash
+TREAD_MIRROR=yes ./install.sh   # 自动配置镜像
+TREAD_MIRROR=no  ./install.sh   # 跳过镜像，使用官方源
+```
+
+**安装完成后，在任意目录都能直接用：**
+```bash
+tread your-novel.txt
+tread your-novel.epub
+tread your-novel.mobi --mode comment --lines 2
+```
+
+---
+
+### 手动安装
+
+如果你更习惯自己控制每一步：
 
 ```bash
+# 1. 安装 Rust（如已安装可跳过）
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+
+# 2. 配置 Cargo 镜像（国内用户可选）
+mkdir -p ~/.cargo
+cat > ~/.cargo/config.toml << 'EOF'
+[source.crates-io]
+registry = "https://github.com/rust-lang/crates.io-index"
+replace-with = 'ustc'
+
+[source.ustc]
+registry = "git://mirrors.ustc.edu.cn/crates.io-index"
+EOF
+
+# 3. 克隆并编译
 git clone https://github.com/dkcn2006/tread.git
 cd tread
 cargo build --release
-```
 
-编译完成后，二进制位于 `target/release/tread`。手动加入 PATH：
-
-```bash
-# macOS / Linux
+# 4. 复制到全局 PATH
 cp target/release/tread /usr/local/bin/
-# 或加入 PATH
-export PATH="$PATH:$(pwd)/target/release"
+# 或: ln -s $(pwd)/target/release/tread ~/.cargo/bin/tread
 ```
 
 ## 使用
