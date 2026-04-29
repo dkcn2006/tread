@@ -56,7 +56,24 @@ registry = "git://mirrors.ustc.edu.cn/crates.io-index"
 - **USTC**: `git://mirrors.ustc.edu.cn/crates.io-index`
 - **TUNA**: `https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git`
 
-### 3. 克隆并编译
+### 3. 一键全局安装（推荐）
+
+```bash
+git clone https://github.com/dkcn2006/tread.git
+cd tread
+./install.sh
+```
+
+脚本会自动完成：
+1. 检测 Rust 工具链
+2. 将 cargo 配置持久化到 `~/.bashrc` / `~/.zshrc`
+3. 编译 release 版本
+4. 安装到 `~/.cargo/bin/`（全局可用）
+5. 验证安装
+
+> 首次编译需几分钟，取决于网络和设备性能。
+
+### 3b. 手动编译（想自己控制安装位置）
 
 ```bash
 git clone https://github.com/dkcn2006/tread.git
@@ -64,7 +81,7 @@ cd tread
 cargo build --release
 ```
 
-编译完成后，二进制位于 `target/release/tread`。建议将其加入 PATH：
+编译完成后，二进制位于 `target/release/tread`。手动加入 PATH：
 
 ```bash
 # macOS / Linux
@@ -94,7 +111,8 @@ tread "txt/冰与火之歌一：权利的游戏.txt" --lines 2
 |------|------|
 | `j` / `↓` / `Enter` | 向下滚动一行 |
 | `k` / `↑` | 向上滚动一行 |
-| `Space` | 向下翻一屏 |
+| `Space` / `PageDown` | 向下翻一屏 |
+| `b` / `PageUp` | 向上翻一屏 |
 | `Home` | 跳到开头 |
 | `End` | 跳到末尾 |
 | `t` | 切换伪装模式 |
