@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 #
 # tread 全局安装脚本
-# 自动完成：PATH 配置 → 编译 → 安装 → 验证
+# 真正的一键安装：Rust → 镜像 → 编译 → 安装 → 验证
+#
+# 非交互模式（CI/无头环境）：
+#   TREAD_MIRROR=yes ./install.sh   # 自动配置镜像
+#   TREAD_MIRROR=no  ./install.sh   # 跳过镜像
 #
 # 用法：
 #   cd /path/to/tread
@@ -11,7 +15,6 @@
 set -euo pipefail
 
 # ── 颜色 ──
-# 支持 NO_COLOR 环境变量（https://no-color.org/）
 if [ -n "${NO_COLOR:-}" ]; then
     RED='' GREEN='' YELLOW='' BLUE='' NC=''
 elif [ -t 1 ] && command -v tput &> /dev/null && tput colors &> /dev/null && [ "$(tput colors)" -ge 8 ]; then
@@ -38,26 +41,33 @@ case "$SHELL_NAME" in
 esac
 info "检测到 shell: $SHELL_NAME → rc 文件: $RC_FILE"
 
-# ── 2. 检查 Rust 是否已安装 ──
+# ── 2. 自动安装 Rust（如未安装） ──
 if ! command -v cargo &> /dev/null; then
+    warn "未检测到 Rust 工具链，开始自动安装..."
     echo ""
-    err "未检测到 Rust 工具链（cargo）"
-    echo ""
-    echo "请先安装 Rust，推荐方式："
-    echo ""
-    echo "  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
-    echo ""
-    echo "安装完成后，重新打开终端或执行："
-    echo "  source \$HOME/.cargo/env"
-    echo ""
-    echo "然后再运行此脚本。"
-    exit 1
+    echo "  下载 rustup 安装器..."
+
+    # 下载 rustup-init
+    RUSTUP_URL="https://sh.rustup.rs"
+    if command -v curl &> /dev/null; then
+        curl --proto '=https' --tlsv1.2 -sSf "$RUSTUP_URL" | sh -s -- -y
+    elif command -v wget &> /dev/null; then
+        wget -qO- "$RUSTUP_URL" | sh -s -- -y
+    else
+        err "需要 curl 或 wget 来下载 Rust 安装器，请先安装其中之一。"
+        exit 1
+    fi
+
+    # 加载 rustup 环境（安装后立即生效）
+    # shellcheck source=/dev/null
+    . "$HOME/.cargo/env" 2>/dev/null || true
+
+    ok "Rust 安装完成: $(cargo --version)"
+else
+    ok "Rust 已安装: $(cargo --version)"
 fi
 
-CARGO_VERSION=$(cargo --version)
-ok "Rust 已安装: $CARGO_VERSION"
-
-# ── 3. 持久化 PATH（将 cargo 加入 rc 文件） ──
+# ── 3. 确保 cargo 环境在 rc 文件中 ──
 CARGO_ENV_LINE='. "$HOME/.cargo/env"'
 
 if [ -f "$HOME/.cargo/env" ]; then
@@ -80,13 +90,73 @@ info "当前 shell 加载 cargo 环境..."
 . "$HOME/.cargo/env" 2>/dev/null || true
 ok "环境已生效"
 
-# ── 5. 编译安装 tread ──
+# ── 5. 配置 Cargo 镜像（国内加速） ──
+CARGO_CONFIG="$HOME/.cargo/config.toml"
+CARGO_CONFIG_LEGACY="$HOME/.cargo/config"
+
+# 检查是否已配置镜像
+if [ -f "$CARGO_CONFIG" ] || [ -f "$CARGO_CONFIG_LEGACY" ]; then
+    ok "Cargo 配置已存在，跳过镜像配置"
+else
+    # 支持环境变量控制非交互模式
+    if [ -n "${TREAD_MIRROR:-}" ]; then
+        if [ "$TREAD_MIRROR" = "yes" ] || [ "$TREAD_MIRROR" = "y" ] || [ "$TREAD_MIRROR" = "Y" ]; then
+            answer="y"
+        else
+            answer="n"
+        fi
+    elif [ -t 0 ]; then
+        # 有交互式 stdin，询问用户
+        info "是否要配置 Cargo 国内镜像以加速编译？"
+        printf "  [Y/n] "
+        read -r answer || true
+        if [ -z "$answer" ]; then
+            answer="y"
+        fi
+    else
+        # 无交互式 stdin，自动配置镜像
+        info "非交互环境，自动配置 Cargo 国内镜像"
+        answer="y"
+    fi
+
+    if [ "$answer" = "y" ] || [ "$answer" = "Y" ]; then
+        mkdir -p "$HOME/.cargo"
+        cat > "$CARGO_CONFIG" << 'EOF'
+[source.crates-io]
+registry = "https://github.com/rust-lang/crates.io-index"
+replace-with = 'ustc'
+
+[source.ustc]
+registry = "git://mirrors.ustc.edu.cn/crates.io-index"
+EOF
+        ok "已配置 USTC 镜像到 $CARGO_CONFIG"
+        echo "  镜像源: git://mirrors.ustc.edu.cn/crates.io-index"
+        echo "  如需更换其他镜像，可手动编辑该文件。"
+    else
+        info "跳过镜像配置，使用官方 crates.io"
+    fi
+fi
+
+# ── 6. 编译安装 tread ──
 echo ""
 info "开始编译 tread（release 模式，首次编译可能需几分钟）..."
 cargo install --path . 2>&1
 ok "编译安装完成"
 
-# ── 6. 验证 ──
+# ── 7. 确保 ~/.cargo/bin 在 PATH 中 ──
+# cargo install 默认装到 ~/.cargo/bin，但如果用户 PATH 没配好可能找不到
+if ! echo "$PATH" | tr ':' '\n' | grep -qx "$HOME/.cargo/bin"; then
+    warn "~/.cargo/bin 不在当前 PATH 中"
+    info "将 ~/.cargo/bin 追加到 $RC_FILE"
+    echo ""                                      >> "$RC_FILE"
+    echo "# ── cargo bin PATH (added by tread) ──" >> "$RC_FILE"
+    echo 'export PATH="$HOME/.cargo/bin:$PATH"'  >> "$RC_FILE"
+    ok "已追加到 $RC_FILE"
+    # 当前 shell 也立即生效
+    export PATH="$HOME/.cargo/bin:$PATH"
+fi
+
+# ── 8. 验证 ──
 echo ""
 info "验证安装..."
 if command -v tread &> /dev/null; then
@@ -100,12 +170,15 @@ if command -v tread &> /dev/null; then
     ok "全部完成！现在可以在任意目录运行："
     echo ""
     echo "  tread your-novel.txt"
-    echo "  tread your-novel.txt --mode comment --lines 2"
-else
-    err "tread 未找到，可能安装路径不在 PATH 中"
+    echo "  tread your-novel.epub"
+    echo "  tread your-novel.mobi --mode comment --lines 2"
     echo ""
-    echo "请手动运行："
+    echo "如果当前终端找不到 tread，请执行："
     echo "  source $RC_FILE"
-    echo "然后重试此脚本。"
+else
+    err "tread 未找到，安装可能出现问题"
+    echo ""
+    echo "请检查 ~/.cargo/bin 是否存在 tread 二进制，或手动执行："
+    echo "  source $RC_FILE"
     exit 1
 fi
