@@ -149,10 +149,13 @@ tread "txt/冰与火之歌一：权利的游戏.txt" --lines 2
 
 ### 电子书支持
 
-支持直接读取 **.mobi** / **.azw** / **.azw3**（Kindle 格式）和 **.pdf** 电子书，自动提取正文并清理格式，章节识别、书签、搜索等功能与 txt 文件完全一致。
+支持直接读取 **.epub** / **.mobi** / **.azw** / **.azw3**（Kindle 格式）和 **.pdf** 电子书，自动提取正文并清理格式，章节识别、书签、搜索等功能与 txt 文件完全一致。
 
 ```bash
-# mobi 格式同样可用
+# epub 格式
+tread "novel.epub"
+
+# mobi 格式
 tread "novel.mobi"
 tread "novel.azw3" --mode comment --lines 2
 

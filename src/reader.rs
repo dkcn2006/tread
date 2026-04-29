@@ -47,6 +47,7 @@ impl Book {
         let text = match ext.as_str() {
             "mobi" | "azw" | "azw3" => load_mobi(&path)?,
             "pdf" => load_pdf(&path)?,
+            "epub" => load_epub(&path)?,
             _ => {
                 let raw = std::fs::read(&path)?;
                 decode_text(&raw)
@@ -142,6 +143,32 @@ impl Book {
         }
         None
     }
+}
+
+/// 解析 EPUB 文件，返回纯文本
+fn load_epub<P: AsRef<Path>>(path: P) -> Result<String, Box<dyn std::error::Error>> {
+    let mut doc = epub::doc::EpubDoc::new(&path)?;
+    let mut full_text = String::new();
+
+    for spine_item in doc.spine.iter() {
+        let idref = &spine_item.idref;
+        if let Some((content, _mime)) = doc.get_resource(idref) {
+            let html = decode_text(&content);
+            let text = html_to_text(&html);
+            if !text.is_empty() {
+                if !full_text.is_empty() {
+                    full_text.push('\n');
+                }
+                full_text.push_str(&text);
+            }
+        }
+    }
+
+    if full_text.is_empty() {
+        return Err("EPUB 文件内容为空".into());
+    }
+
+    Ok(full_text)
 }
 
 /// 解析 mobi/azw/azw3 文件，返回纯文本
