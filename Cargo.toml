@@ -18,3 +18,4 @@ unicode-width = "0.2"
 dirs = "6"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 regex = "1"
+mobi = "0.8"

@@ -147,6 +147,16 @@ tread "txt/冰与火之歌一：权利的游戏.txt" --lines 2
 
 自动检测 UTF-8 / GBK / GB18030 / BIG5 等中文编码，无需手动转码。空文件或仅含空白行的文件会给出友好错误提示。
 
+### 电子书支持
+
+支持直接读取 **.mobi** / **.azw** / **.azw3**（Kindle 格式）电子书，自动提取正文并清理 HTML 标签，章节识别、书签、搜索等功能与 txt 文件完全一致。
+
+```bash
+# mobi 格式同样可用
+tread "novel.mobi"
+tread "novel.azw3" --mode comment --lines 2
+```
+
 ### 终端适配
 
 支持终端窗口实时调整大小，内容自动重新换行，无需重启程序。

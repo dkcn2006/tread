@@ -23,22 +23,48 @@ static CHAPTER_PATTERNS: LazyLock<[Regex; 3]> = LazyLock::new(|| [
     Regex::new(r"^[\s]*[卷篇][\s]*[一二三四五六七八九十零百千万亿\d]+[\s]*.*$").unwrap(),
 ]);
 
+/// 简单 HTML → 纯文本转换（用于 mobi 内容清理）
+static HTML_BR_RE: LazyLock<Regex> = LazyLock::new(||
+    Regex::new(r"<br\s*/?>").unwrap()
+);
+static HTML_P_CLOSE_RE: LazyLock<Regex> = LazyLock::new(||
+    Regex::new(r"</p>").unwrap()
+);
+static HTML_TAG_RE: LazyLock<Regex> = LazyLock::new(||
+    Regex::new(r"</?[^>]+>").unwrap()
+);
+
 impl Book {
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
         let canonical = std::fs::canonicalize(&path)?;
         let file_path = canonical.to_string_lossy().to_string();
-        let raw = std::fs::read(&path)?;
-        let text = decode_text(&raw);
+
+        let ext = canonical.extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+
+        let text = match ext.as_str() {
+            "mobi" | "azw" | "azw3" => load_mobi(&path)?,
+            _ => {
+                let raw = std::fs::read(&path)?;
+                decode_text(&raw)
+            }
+        };
+
         let lines: Vec<String> = text
             .lines()
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
             .collect();
+
         if lines.is_empty() {
             return Err("文件内容为空或仅包含空白行".into());
         }
+
         let lowercase_lines: Vec<String> = lines.iter().map(|s| s.to_lowercase()).collect();
         let chapters = parse_chapters(&lines);
+
         Ok(Book {
             lines,
             lowercase_lines,
@@ -115,6 +141,56 @@ impl Book {
         }
         None
     }
+}
+
+/// 解析 mobi/azw/azw3 文件，返回纯文本
+fn load_mobi<P: AsRef<Path>>(path: P) -> Result<String, Box<dyn std::error::Error>> {
+    let m = mobi::Mobi::from_path(&path)?;
+    let content = m.content_as_string();
+    Ok(html_to_text(&content))
+}
+
+/// 简单但有效的 HTML → 纯文本转换
+fn html_to_text(html: &str) -> String {
+    let mut text = html.to_string();
+
+    // 1. <br>, <br/> → 换行
+    text = HTML_BR_RE.replace_all(&text, "\n").to_string();
+
+    // 2. </p> → 换行（段落分隔）
+    text = HTML_P_CLOSE_RE.replace_all(&text, "\n").to_string();
+
+    // 3. 去掉其余所有 HTML 标签
+    text = HTML_TAG_RE.replace_all(&text, "").to_string();
+
+    // 4. 解码常见 HTML 实体
+    text = text.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&nbsp;", " ");
+
+    // 5. 合并连续空行，保留单空行用于段落分隔
+    let mut result = String::new();
+    let mut prev_blank = false;
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            if !prev_blank {
+                result.push('\n');
+                prev_blank = true;
+            }
+        } else {
+            if !result.is_empty() && !prev_blank {
+                result.push('\n');
+            }
+            result.push_str(trimmed);
+            prev_blank = false;
+        }
+    }
+
+    result
 }
 
 fn decode_text(raw: &[u8]) -> String {
