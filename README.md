@@ -30,13 +30,48 @@
 
 所有模式都只占终端 **1-3 行**，不进入 alternate screen，不刷屏，**隐蔽性拉满**。
 
-## 安装
+## 环境配置
+
+### 1. 安装 Rust
 
 ```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+```
+
+### 2. 配置 Cargo 镜像（可选，国内用户推荐）
+
+创建或编辑 `~/.cargo/config`：
+
+```toml
+[source.crates-io]
+registry = "https://github.com/rust-lang/crates.io-index"
+replace-with = 'ustc'
+
+[source.ustc]
+registry = "git://mirrors.ustc.edu.cn/crates.io-index"
+```
+
+国内常用镜像：
+- **USTC**: `git://mirrors.ustc.edu.cn/crates.io-index`
+- **TUNA**: `https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git`
+
+### 3. 克隆并编译
+
+```bash
+git clone https://github.com/dkcn2006/tread.git
+cd tread
 cargo build --release
 ```
 
-编译完成后，二进制位于 `target/release/tread`。
+编译完成后，二进制位于 `target/release/tread`。建议将其加入 PATH：
+
+```bash
+# macOS / Linux
+cp target/release/tread /usr/local/bin/
+# 或加入 PATH
+export PATH="$PATH:$(pwd)/target/release"
+```
 
 ## 使用
 
