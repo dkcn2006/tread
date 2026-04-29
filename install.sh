@@ -11,16 +11,23 @@
 set -euo pipefail
 
 # ── 颜色 ──
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# 支持 NO_COLOR 环境变量（https://no-color.org/）
+if [ -n "${NO_COLOR:-}" ]; then
+    RED='' GREEN='' YELLOW='' BLUE='' NC=''
+elif [ -t 1 ] && command -v tput &> /dev/null && tput colors &> /dev/null && [ "$(tput colors)" -ge 8 ]; then
+    RED=$(tput setaf 1)
+    GREEN=$(tput setaf 2)
+    YELLOW=$(tput setaf 3)
+    BLUE=$(tput setaf 4)
+    NC=$(tput sgr0)
+else
+    RED='' GREEN='' YELLOW='' BLUE='' NC=''
+fi
 
-info()  { echo -e "${BLUE}[tread]${NC} $1"; }
-ok()    { echo -e "${GREEN}[tread] ✓${NC} $1"; }
-warn()  { echo -e "${YELLOW}[tread] !${NC} $1"; }
-err()   { echo -e "${RED}[tread] ✗${NC} $1"; }
+info()  { printf "${BLUE}[tread]${NC} %s\n" "$1"; }
+ok()    { printf "${GREEN}[tread] ✓${NC} %s\n" "$1"; }
+warn()  { printf "${YELLOW}[tread] !${NC} %s\n" "$1"; }
+err()   { printf "${RED}[tread] ✗${NC} %s\n" "$1"; }
 
 # ── 1. 检测 shell，确定 rc 文件 ──
 SHELL_NAME=$(basename "$SHELL")
