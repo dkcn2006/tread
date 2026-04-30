@@ -150,9 +150,9 @@ fn load_epub<P: AsRef<Path>>(path: P) -> Result<String, Box<dyn std::error::Erro
     let mut doc = epub::doc::EpubDoc::new(&path)?;
     let mut full_text = String::new();
 
-    for spine_item in doc.spine.iter() {
-        let idref = &spine_item.idref;
-        if let Some((content, _mime)) = doc.get_resource(idref) {
+    let spine = doc.spine.clone();
+    for idref in spine.iter() {
+        if let Ok(content) = doc.get_resource(idref) {
             let html = decode_text(&content);
             let text = html_to_text(&html);
             if !text.is_empty() {
@@ -174,7 +174,7 @@ fn load_epub<P: AsRef<Path>>(path: P) -> Result<String, Box<dyn std::error::Erro
 /// 解析 mobi/azw/azw3 文件，返回纯文本
 fn load_mobi<P: AsRef<Path>>(path: P) -> Result<String, Box<dyn std::error::Error>> {
     let m = mobi::Mobi::from_path(&path)?;
-    let content = m.content_as_string();
+    let content = m.content_as_string()?;
     Ok(html_to_text(&content))
 }
 

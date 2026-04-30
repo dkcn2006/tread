@@ -20,11 +20,4 @@ impl DisplayMode {
         }
     }
 
-    pub fn label(self) -> &'static str {
-        match self {
-            DisplayMode::Log => "log",
-            DisplayMode::Minimal => "minimal",
-            DisplayMode::Comment => "comment",
-        }
-    }
 }

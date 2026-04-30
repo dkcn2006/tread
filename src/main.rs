@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = App::new(book, args.mode, args.lines);
 
     enable_raw_mode()?;
-    let mut stdout = io::stdout();
+    let stdout = io::stdout();
 
     // Panic hook: ensure terminal is restored even if app panics
     let original_hook = std::panic::take_hook();

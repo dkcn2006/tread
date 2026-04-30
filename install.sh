@@ -76,12 +76,12 @@ if [ -f "$HOME/.cargo/env" ]; then
         echo ""                              >> "$RC_FILE"
         echo "# ── Rust toolchain (added by tread) ──" >> "$RC_FILE"
         echo "$CARGO_ENV_LINE"               >> "$RC_FILE"
-        ok "已写入 $RC_FILE，以后新终端自动可用"
+        ok "已写入 $RC_FILE, 以后新终端自动可用"
     else
         ok "$RC_FILE 中已包含 cargo 配置"
     fi
 else
-    warn "~/.cargo/env 不存在，PATH 持久化可能不完整"
+    warn "~/.cargo/env 不存在, PATH 持久化可能不完整"
 fi
 
 # ── 4. 当前 shell 立刻生效 ──
@@ -97,6 +97,11 @@ CARGO_CONFIG_LEGACY="$HOME/.cargo/config"
 # 检查是否已配置镜像
 if [ -f "$CARGO_CONFIG" ] || [ -f "$CARGO_CONFIG_LEGACY" ]; then
     ok "Cargo 配置已存在，跳过镜像配置"
+    # 提示迁移旧格式的 config
+    if [ -f "$CARGO_CONFIG_LEGACY" ] && [ ! -f "$CARGO_CONFIG" ]; then
+        warn "检测到旧格式 $CARGO_CONFIG_LEGACY, 建议迁移:"
+        echo "  mv $CARGO_CONFIG_LEGACY $CARGO_CONFIG"
+    fi
 else
     # 支持环境变量控制非交互模式
     if [ -n "${TREAD_MIRROR:-}" ]; then
@@ -145,8 +150,16 @@ ok "编译安装完成"
 
 # ── 7. 确保 ~/.cargo/bin 在 PATH 中 ──
 # cargo install 默认装到 ~/.cargo/bin，但如果用户 PATH 没配好可能找不到
-if ! echo "$PATH" | tr ':' '\n' | grep -qx "$HOME/.cargo/bin"; then
-    warn "~/.cargo/bin 不在当前 PATH 中"
+_has_cargo_bin_in_rc=false
+
+if [ -f "$RC_FILE" ]; then
+    # 检查 rc 文件中是否已有 cargo env source 或 cargo/bin PATH 配置
+    if grep -qE '(\.cargo/env|\.cargo/bin)' "$RC_FILE" 2>/dev/null; then
+        _has_cargo_bin_in_rc=true
+    fi
+fi
+
+if ! $_has_cargo_bin_in_rc; then
     info "将 ~/.cargo/bin 追加到 $RC_FILE"
     echo ""                                      >> "$RC_FILE"
     echo "# ── cargo bin PATH (added by tread) ──" >> "$RC_FILE"
@@ -154,6 +167,8 @@ if ! echo "$PATH" | tr ':' '\n' | grep -qx "$HOME/.cargo/bin"; then
     ok "已追加到 $RC_FILE"
     # 当前 shell 也立即生效
     export PATH="$HOME/.cargo/bin:$PATH"
+else
+    ok "$RC_FILE 中已包含 cargo bin PATH 配置"
 fi
 
 # ── 8. 验证 ──
