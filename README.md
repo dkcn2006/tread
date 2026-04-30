@@ -199,12 +199,46 @@ tread "novel.pdf"
 - **崩溃保护** — 即使程序异常退出，终端也会自动恢复原始状态
 - **类型安全书签** — 显示模式直接序列化枚举值，不再依赖数字索引
 
-## 技术栈
+## 技术栈与依赖
 
-- [ratatui](https://github.com/ratatui/ratatui) — TUI 渲染（Inline viewport，不进入 alternate screen）
-- [crossterm](https://github.com/crossterm-rs/crossterm) — 跨平台终端控制
-- [clap](https://github.com/clap-rs/clap) — CLI 参数解析
-- [encoding_rs](https://github.com/hsivonen/encoding_rs) — 中文编码检测
+tread 基于 Rust 生态构建，核心依赖如下：
+
+### 核心框架
+
+| 依赖 | 版本 | 作用 |
+|------|------|------|
+| [ratatui](https://github.com/ratatui/ratatui) | 0.29 | TUI 渲染引擎，Inline viewport 模式，不进入 alternate screen，保持隐蔽 |
+| [crossterm](https://github.com/crossterm-rs/crossterm) | 0.28 | 跨平台终端控制（macOS/Linux/Windows），处理键盘事件、光标、颜色、窗口大小变化 |
+| [clap](https://github.com/clap-rs/clap) | 4.x | CLI 参数解析，支持 `--mode`、`--lines` 等命令行选项 |
+
+### 数据与编码
+
+| 依赖 | 版本 | 作用 |
+|------|------|------|
+| [serde](https://github.com/serde-rs/serde) + serde_json | 1.x | 书签序列化/反序列化（JSON 格式），保存阅读进度 |
+| [encoding_rs](https://github.com/hsivonen/encoding_rs) | 0.8 | 中文编码自动检测与转换（UTF-8 / GBK / GB18030 / BIG5 等） |
+| [unicode-width](https://github.com/unicode-rs/unicode-width) | 0.2 | 计算 Unicode 字符显示宽度，中英文混排对齐 |
+| [chrono](https://github.com/chronotope/chrono) | 0.4 | Log 模式时间戳生成（仅启用 clock feature，最小化编译体积） |
+
+### 电子书解析
+
+| 依赖 | 版本 | 作用 |
+|------|------|------|
+| [epub](https://github.com/danigm/epub-rs) | 1.2 | EPUB 格式解析，遍历 spine 读取章节 HTML |
+| [mobi](https://github.com/janakiramm/mobi-rs) | 0.8 | MOBI / AZW / AZW3（Kindle 格式）解析，提取正文内容 |
+| [pdf-extract](https://github.com/jrmuizel/pdf-extract) | 0.10 | PDF 文本提取，清理页码和页眉页脚 |
+| [regex](https://github.com/rust-lang/regex) | 1.x | 章节标题正则匹配（中文章节名 + Chapter），以及 HTML 标签清理 |
+
+### 系统路径
+
+| 依赖 | 版本 | 作用 |
+|------|------|------|
+| [dirs](https://github.com/soc/dirs-rs) | 6.x | 跨平台获取用户配置目录（`~/.config/terminal-read/`），存储书签文件 |
+
+### 编译要求
+
+- **Rust 版本**：1.80+（使用 `std::sync::LazyLock` 做正则静态编译）
+- **平台**：macOS / Linux / Windows（via crossterm）
 
 ## License
 
