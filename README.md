@@ -50,7 +50,7 @@
 
 ## 环境配置
 
-### 一键安装（推荐）
+### 一键安装（macOS / Linux）
 
 ```bash
 git clone https://github.com/dkcn2006/tread.git
@@ -58,23 +58,41 @@ cd tread
 ./install.sh
 ```
 
-脚本会自动完成全部环境配置：
+### 一键安装（Windows）
+
+```powershell
+git clone https://github.com/dkcn2006/tread.git
+cd tread
+.\install.ps1
+```
+
+> 如果执行策略阻止脚本运行，先执行：`Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+
+### 脚本会自动完成
+
 1. **安装 Rust** — 检测到未安装时自动下载 rustup 并安装
 2. **配置 Cargo 镜像** — 交互式询问 / 非交互环境自动配置 USTC 加速镜像
-3. **持久化 PATH** — 将 cargo 环境写入 `~/.bashrc` / `~/.zshrc`
+3. **持久化 PATH** — 将 cargo 环境写入 rc 文件或 Windows 用户 PATH
 4. **编译安装** — `cargo install --path .` 编译 release 版本
 5. **全局可用** — 确保 `~/.cargo/bin` 在 PATH 中
 6. **验证** — 安装后执行 `tread --help` 确认可用
 
 > 首次编译需几分钟，取决于网络和设备性能。国内用户建议使用镜像加速。
 
-**非交互模式（CI / 自动化脚本）：**
+### 非交互模式（CI / 自动化脚本）
+
 ```bash
+# macOS / Linux
 TREAD_MIRROR=yes ./install.sh   # 自动配置镜像
 TREAD_MIRROR=no  ./install.sh   # 跳过镜像，使用官方源
+
+# Windows PowerShell
+$env:TREAD_MIRROR="yes"; .\install.ps1
+$env:TREAD_MIRROR="no";  .\install.ps1
 ```
 
-**安装完成后，在任意目录都能直接用：**
+### 安装完成后，在任意目录都能直接用
+
 ```bash
 tread your-novel.txt
 tread your-novel.epub

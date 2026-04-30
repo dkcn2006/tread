@@ -14,6 +14,13 @@
 
 set -euo pipefail
 
+# ── 检测操作系统 ──
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+    err "检测到 Windows 环境，请使用 PowerShell 安装脚本："
+    echo "  .\\install.ps1"
+    exit 1
+fi
+
 # ── 颜色 ──
 if [ -n "${NO_COLOR:-}" ]; then
     RED='' GREEN='' YELLOW='' BLUE='' NC=''
@@ -76,12 +83,12 @@ if [ -f "$HOME/.cargo/env" ]; then
         echo ""                              >> "$RC_FILE"
         echo "# ── Rust toolchain (added by tread) ──" >> "$RC_FILE"
         echo "$CARGO_ENV_LINE"               >> "$RC_FILE"
-        ok "已写入 $RC_FILE, 以后新终端自动可用"
+        ok "已写入 $RC_FILE，以后新终端自动可用"
     else
         ok "$RC_FILE 中已包含 cargo 配置"
     fi
 else
-    warn "~/.cargo/env 不存在, PATH 持久化可能不完整"
+    warn "~/.cargo/env 不存在，PATH 持久化可能不完整"
 fi
 
 # ── 4. 当前 shell 立刻生效 ──
@@ -99,7 +106,7 @@ if [ -f "$CARGO_CONFIG" ] || [ -f "$CARGO_CONFIG_LEGACY" ]; then
     ok "Cargo 配置已存在，跳过镜像配置"
     # 提示迁移旧格式的 config
     if [ -f "$CARGO_CONFIG_LEGACY" ] && [ ! -f "$CARGO_CONFIG" ]; then
-        warn "检测到旧格式 $CARGO_CONFIG_LEGACY, 建议迁移:"
+        warn "检测到旧格式 $CARGO_CONFIG_LEGACY，建议迁移:"
         echo "  mv $CARGO_CONFIG_LEGACY $CARGO_CONFIG"
     fi
 else
