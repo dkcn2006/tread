@@ -1,56 +1,25 @@
-# tread
+# tread — 终端伪装小说阅读器
 
-> **T**erminal **read** — 在终端里摸鱼看小说的终极方案。
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org)
 
-## 这玩意儿是干嘛的？
+在终端里看小说，屏幕看起来却像服务器日志。`tread` 使用 ratatui 的 `Inline` 视口直接在当前终端底部渲染 1-3 行文字，不进入全屏 alternate screen，也不会清屏——同事路过只会看到平平无奇的命令行输出。
 
-为所有 **CLI vibe coding** 用户打造。
-
-当你和 AI 在 terminal 里结对编程时——不管是 Claude Code、Aider、Cline 还是别的工具——难免会陷入漫长的等待：AI 在思考、在生成、在跑测试……屏幕上一大堆日志滚动，你的眼神却逐渐失焦。
-
-这时候，你悄悄按两下键盘，终端底部不动声色地滑出一两行"日志"：
-
-```
-[2026-04-29 09:15:01] INFO  却说那贾雨村在金陵城中闲居无事...
+```bash
+tread novel.txt --mode log --lines 1
 ```
 
-同事路过，扫一眼你的屏幕，只看到平平无奇的服务器日志，然后放心地走开了。
+**核心特性**
 
-**这就是 tread 存在的意义。**
+- **三种伪装模式** — 按 `t` 一键切换日志时间戳、极简输出或代码注释形态
+- **1-3 行占位** — 紧贴终端底部，不占用全屏，不影响历史输出
+- **自动续读** — 退出时保存行号和显示模式到书签文件，下次打开自动恢复
+- **章节列表** — 按 `g` 呼出目录，支持超长列表滚动
+- **全文搜索** — 按 `/` 输入关键词，`n` 跳转下一个匹配
+- **多格式直读** — 原生支持 `.txt`、`.epub`、`.mobi`、`.azw`、`.azw3`、`.pdf`
+- **编码自动识别** — UTF-8、GBK、GB18030、BIG5 无需手动转码
 
-## 伪装模式
-
-`tread` 提供三种伪装形态，按 `t` 键循环切换：
-
-### Log 模式
-
-最常用，看起来像后端日志输出：
-
-![Log 模式](assets/mode-log.png)
-
-### Minimal 模式
-
-极简，像一条普通的命令输出：
-
-![Minimal 模式](assets/mode-minimal.png)
-
-### Comment 模式
-
-像代码注释，适合前端项目：
-
-![Comment 模式](assets/mode-comment.png)
-
-| 模式 | 效果 | 适用场景 |
-|------|------|---------|
-| **Log** | `[时间戳] INFO  小说内容...` | 最常用，看起来像后端日志 |
-| **Minimal** | `小说内容... [42/1205]` | 极简，像一条普通的命令输出 |
-| **Comment** | `// 小说内容... [Ch.3 \| 2.1%]` | 像代码注释，适合前端项目 |
-
-所有模式都只占终端 **1-3 行**，不进入 alternate screen，不刷屏，**隐蔽性拉满**。
-
-## 环境配置
-
-### 一键安装（macOS / Linux）
+## 安装
 
 ```bash
 git clone https://github.com/dkcn2006/tread.git
@@ -58,41 +27,23 @@ cd tread
 ./install.sh
 ```
 
-### 一键安装（Windows）
-
-```powershell
-git clone https://github.com/dkcn2006/tread.git
-cd tread
-.\install.ps1
-```
-
-> 如果执行策略阻止脚本运行，先执行：`Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
-
-### 脚本会自动完成
-
+脚本会自动完成全部环境配置：
 1. **安装 Rust** — 检测到未安装时自动下载 rustup 并安装
 2. **配置 Cargo 镜像** — 交互式询问 / 非交互环境自动配置 USTC 加速镜像
-3. **持久化 PATH** — 将 cargo 环境写入 rc 文件或 Windows 用户 PATH
+3. **持久化 PATH** — 将 cargo 环境写入 `~/.bashrc` / `~/.zshrc`
 4. **编译安装** — `cargo install --path .` 编译 release 版本
 5. **全局可用** — 确保 `~/.cargo/bin` 在 PATH 中
 6. **验证** — 安装后执行 `tread --help` 确认可用
 
 > 首次编译需几分钟，取决于网络和设备性能。国内用户建议使用镜像加速。
 
-### 非交互模式（CI / 自动化脚本）
-
+**非交互模式（CI / 自动化脚本）：**
 ```bash
-# macOS / Linux
 TREAD_MIRROR=yes ./install.sh   # 自动配置镜像
 TREAD_MIRROR=no  ./install.sh   # 跳过镜像，使用官方源
-
-# Windows PowerShell
-$env:TREAD_MIRROR="yes"; .\install.ps1
-$env:TREAD_MIRROR="no";  .\install.ps1
 ```
 
-### 安装完成后，在任意目录都能直接用
-
+**安装完成后，在任意目录都能直接用：**
 ```bash
 tread your-novel.txt
 tread your-novel.epub
@@ -106,47 +57,19 @@ tread your-novel.mobi --mode comment --lines 2
 如果你更习惯自己控制每一步：
 
 ```bash
-# 1. 安装 Rust（如已安装可跳过）
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source $HOME/.cargo/env
-
-# 2. 配置 Cargo 镜像（国内用户可选）
-mkdir -p ~/.cargo
-cat > ~/.cargo/config.toml << 'EOF'
-[source.crates-io]
-registry = "https://github.com/rust-lang/crates.io-index"
-replace-with = 'ustc'
-
-[source.ustc]
-registry = "git://mirrors.ustc.edu.cn/crates.io-index"
-EOF
-
-# 3. 克隆并编译
-git clone https://github.com/dkcn2006/tread.git
-cd tread
-cargo build --release
-
-# 4. 复制到全局 PATH
-cp target/release/tread /usr/local/bin/
-# 或: ln -s $(pwd)/target/release/tread ~/.cargo/bin/tread
+TREAD_MIRROR=yes ./install.sh   # 自动配置 USTC 镜像
+TREAD_MIRROR=no  ./install.sh   # 使用官方 crates.io
 ```
 
-## 使用
-
-项目仓库的 `txt/` 目录下已预置了示例小说（需自行放置你的 `.txt` 文件，该目录已被 `.gitignore` 忽略）。
+## 快速开始
 
 ```bash
-# 基本用法
+# 基本用法，默认以 log 模式打开
 tread "txt/冰与火之歌一：权利的游戏.txt"
 
-# 指定模式（log / minimal / comment）
-tread "txt/冰与火之歌一：权利的游戏.txt" --mode comment
-
-# 显示 2 行（默认 1 行）
-tread "txt/冰与火之歌一：权利的游戏.txt" --lines 2
+# 指定 comment 模式，显示 2 行
+tread novel.epub --mode comment --lines 2
 ```
-
-### 键位
 
 | 按键 | 功能 |
 |------|------|
@@ -157,8 +80,8 @@ tread "txt/冰与火之歌一：权利的游戏.txt" --lines 2
 | `Home` | 跳到开头 |
 | `End` | 跳到末尾 |
 | `t` | 切换伪装模式 |
-| `/` | 进入搜索模式，输入关键词后按 Enter 确认 |
-| `n` | 重复上次搜索，跳到下一个匹配处 |
+| `/` | 搜索 |
+| `n` | 重复上次搜索，跳到下一个匹配 |
 | `g` | 打开章节目录 |
 | `q` | 正常退出并保存进度 |
 | `Esc` | **老板键** — 清屏并立即退出 |
@@ -217,46 +140,12 @@ tread "novel.pdf"
 - **崩溃保护** — 即使程序异常退出，终端也会自动恢复原始状态
 - **类型安全书签** — 显示模式直接序列化枚举值，不再依赖数字索引
 
-## 技术栈与依赖
+## 技术栈
 
-tread 基于 Rust 生态构建，核心依赖如下：
-
-### 核心框架
-
-| 依赖 | 版本 | 作用 |
-|------|------|------|
-| [ratatui](https://github.com/ratatui/ratatui) | 0.29 | TUI 渲染引擎，Inline viewport 模式，不进入 alternate screen，保持隐蔽 |
-| [crossterm](https://github.com/crossterm-rs/crossterm) | 0.28 | 跨平台终端控制（macOS/Linux/Windows），处理键盘事件、光标、颜色、窗口大小变化 |
-| [clap](https://github.com/clap-rs/clap) | 4.x | CLI 参数解析，支持 `--mode`、`--lines` 等命令行选项 |
-
-### 数据与编码
-
-| 依赖 | 版本 | 作用 |
-|------|------|------|
-| [serde](https://github.com/serde-rs/serde) + serde_json | 1.x | 书签序列化/反序列化（JSON 格式），保存阅读进度 |
-| [encoding_rs](https://github.com/hsivonen/encoding_rs) | 0.8 | 中文编码自动检测与转换（UTF-8 / GBK / GB18030 / BIG5 等） |
-| [unicode-width](https://github.com/unicode-rs/unicode-width) | 0.2 | 计算 Unicode 字符显示宽度，中英文混排对齐 |
-| [chrono](https://github.com/chronotope/chrono) | 0.4 | Log 模式时间戳生成（仅启用 clock feature，最小化编译体积） |
-
-### 电子书解析
-
-| 依赖 | 版本 | 作用 |
-|------|------|------|
-| [epub](https://github.com/danigm/epub-rs) | 1.2 | EPUB 格式解析，遍历 spine 读取章节 HTML |
-| [mobi](https://github.com/janakiramm/mobi-rs) | 0.8 | MOBI / AZW / AZW3（Kindle 格式）解析，提取正文内容 |
-| [pdf-extract](https://github.com/jrmuizel/pdf-extract) | 0.10 | PDF 文本提取，清理页码和页眉页脚 |
-| [regex](https://github.com/rust-lang/regex) | 1.x | 章节标题正则匹配（中文章节名 + Chapter），以及 HTML 标签清理 |
-
-### 系统路径
-
-| 依赖 | 版本 | 作用 |
-|------|------|------|
-| [dirs](https://github.com/soc/dirs-rs) | 6.x | 跨平台获取用户配置目录（`~/.config/terminal-read/`），存储书签文件 |
-
-### 编译要求
-
-- **Rust 版本**：1.80+（使用 `std::sync::LazyLock` 做正则静态编译）
-- **平台**：macOS / Linux / Windows（via crossterm）
+- [ratatui](https://github.com/ratatui/ratatui) — TUI 渲染（Inline viewport，不进入 alternate screen）
+- [crossterm](https://github.com/crossterm-rs/crossterm) — 跨平台终端控制
+- [clap](https://github.com/clap-rs/clap) — CLI 参数解析
+- [encoding_rs](https://github.com/hsivonen/encoding_rs) — 中文编码检测
 
 ## License
 
