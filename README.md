@@ -6,6 +6,7 @@
 在终端里看小说，屏幕看起来却像服务器日志。`tread` 使用 ratatui 的 `Inline` 视口直接在当前终端底部渲染 1-3 行文字，不进入全屏 alternate screen，也不会清屏——同事路过只会看到平平无奇的命令行输出。
 
 ```bash
+# 以日志伪装模式打开小说，每次只显示 1 行
 tread novel.txt --mode log --lines 1
 ```
 
@@ -60,6 +61,36 @@ tread your-novel.mobi --mode comment --lines 2
 TREAD_MIRROR=yes ./install.sh   # 自动配置 USTC 镜像
 TREAD_MIRROR=no  ./install.sh   # 使用官方 crates.io
 ```
+
+## 伪装模式
+
+`tread` 提供三种伪装形态，按 `t` 键循环切换：
+
+### Log 模式
+
+最常用，看起来像后端日志输出：
+
+![Log 模式](assets/mode-log.png)
+
+### Minimal 模式
+
+极简，像一条普通的命令输出：
+
+![Minimal 模式](assets/mode-minimal.png)
+
+### Comment 模式
+
+像代码注释，适合前端项目：
+
+![Comment 模式](assets/mode-comment.png)
+
+| 模式 | 效果 | 适用场景 |
+|------|------|---------|
+| **Log** | `[时间戳] INFO  小说内容...` | 最常用，看起来像后端日志 |
+| **Minimal** | `小说内容... [42/1205]` | 极简，像一条普通的命令输出 |
+| **Comment** | `// 小说内容... [Ch.3 \| 2.1%]` | 像代码注释，适合前端项目 |
+
+所有模式都只占终端 **1-3 行**，不进入 alternate screen，不刷屏，**隐蔽性拉满**。
 
 ## 快速开始
 
