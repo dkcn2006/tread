@@ -2,6 +2,13 @@
 name = "tread"
 version = "0.1.0"
 edition = "2021"
+authors = ["dkcn2006"]
+description = "A stealthy terminal TUI novel reader that looks like server logs"
+license = "MIT"
+repository = "https://github.com/dkcn2006/tread"
+readme = "README.md"
+keywords = ["cli", "tui", "reader", "novel", "terminal"]
+categories = ["command-line-utilities"]
 
 [[bin]]
 name = "tread"
