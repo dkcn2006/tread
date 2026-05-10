@@ -74,8 +74,8 @@ if (Test-Path $cargoConfig -or Test-Path $cargoConfigLegacy) {
         }
     } else {
         info "是否要配置 Cargo 国内镜像以加速编译？"
-        $input = Read-Host "  [Y/n]"
-        if ([string]::IsNullOrWhiteSpace($input) -or $input -eq "y" -or $input -eq "Y") {
+        $input = Read-Host "  [y/N]"
+        if ($input -eq "y" -or $input -eq "Y") {
             $answer = "y"
         } else {
             $answer = "n"

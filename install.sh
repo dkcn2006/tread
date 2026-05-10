@@ -118,17 +118,17 @@ else
             answer="n"
         fi
     elif [ -t 0 ]; then
-        # 有交互式 stdin，询问用户
+        # 有交互式 stdin，询问用户（默认否）
         info "是否要配置 Cargo 国内镜像以加速编译？"
-        printf "  [Y/n] "
+        printf "  [y/N] "
         read -r answer || true
         if [ -z "$answer" ]; then
-            answer="y"
+            answer="n"
         fi
     else
-        # 无交互式 stdin，自动配置镜像
-        info "非交互环境，自动配置 Cargo 国内镜像"
-        answer="y"
+        # 无交互式 stdin，保守起见跳过镜像
+        info "非交互环境，跳过 Cargo 镜像配置（如需启用请设置 TREAD_MIRROR=yes）"
+        answer="n"
     fi
 
     if [ "$answer" = "y" ] || [ "$answer" = "Y" ]; then

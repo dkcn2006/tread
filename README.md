@@ -12,11 +12,15 @@ tread novel.txt --mode log --lines 1
 
 **核心特性**
 
-- **三种伪装模式** — 按 `t` 一键切换日志时间戳、极简输出或代码注释形态
+- **多种伪装模板** — Log / GitLog / npm install / pytest / docker logs / kubectl logs / Minimal / Comment，按 `t` 循环切换，也支持 `--template` 自定义
 - **1-3 行占位** — 紧贴终端底部，不占用全屏，不影响历史输出
 - **自动续读** — 退出时保存行号和显示模式到书签文件，下次打开自动恢复
 - **章节列表** — 按 `g` 呼出目录，支持超长列表滚动
-- **全文搜索** — 按 `/` 输入关键词，`n` 跳转下一个匹配
+- **全文搜索** — 按 `/` 输入关键词，`n` 跳转下一个匹配，`N` 反向搜索，命中内容高亮
+- **进度跳转** — 按 `p` 或 `:` 输入百分比（如 `50`）直接跳转
+- **收藏位置** — 按 `m` 收藏当前行，按 `M` 呼出收藏列表快速跳转
+- **最近阅读** — `tread --recent` 列出最近打开的文件并快速续读
+- **瞬时隐藏** — 按 `h` 清屏隐藏，再按任意键恢复
 - **多格式直读** — 原生支持 `.txt`、`.epub`、`.mobi`、`.azw`、`.azw3`、`.pdf`
 - **编码自动识别** — UTF-8、GBK、GB18030、BIG5 无需手动转码
 
@@ -30,17 +34,17 @@ cd tread
 
 脚本会自动完成全部环境配置：
 1. **安装 Rust** — 检测到未安装时自动下载 rustup 并安装
-2. **配置 Cargo 镜像** — 交互式询问 / 非交互环境自动配置 USTC 加速镜像
+2. **配置 Cargo 镜像** — 交互式询问，默认不覆盖已有 Cargo 配置
 3. **持久化 PATH** — 将 cargo 环境写入 `~/.bashrc` / `~/.zshrc`
 4. **编译安装** — `cargo install --path .` 编译 release 版本
 5. **全局可用** — 确保 `~/.cargo/bin` 在 PATH 中
 6. **验证** — 安装后执行 `tread --help` 确认可用
 
-> 首次编译需几分钟，取决于网络和设备性能。国内用户建议使用镜像加速。
+> 首次编译需几分钟，取决于网络和设备性能。国内用户建议设置 `TREAD_MIRROR=yes` 启用镜像加速。
 
 **非交互模式（CI / 自动化脚本）：**
 ```bash
-TREAD_MIRROR=yes ./install.sh   # 自动配置镜像
+TREAD_MIRROR=yes ./install.sh   # 启用镜像
 TREAD_MIRROR=no  ./install.sh   # 跳过镜像，使用官方源
 ```
 
@@ -55,12 +59,26 @@ tread your-novel.mobi --mode comment --lines 2
 
 ### 手动安装
 
-如果你更习惯自己控制每一步：
+```bash
+git clone https://github.com/dkcn2006/tread.git
+cd tread
+cargo install --path .
+```
+
+### cargo install（发布到 crates.io 后）
 
 ```bash
-TREAD_MIRROR=yes ./install.sh   # 自动配置 USTC 镜像
-TREAD_MIRROR=no  ./install.sh   # 使用官方 crates.io
+cargo install tread
 ```
+
+### Homebrew（创建个人 tap）
+
+```bash
+brew tap your-username/tread
+brew install tread
+```
+
+> 如果你想发布自己的 Homebrew tap，可参考 [Homebrew 官方文档](https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap) 创建 `homebrew-tread` 仓库并提交 Formula。
 
 ## 伪装模式
 
@@ -112,8 +130,13 @@ tread novel.epub --mode comment --lines 2
 | `End` | 跳到末尾 |
 | `t` | 切换伪装模式 |
 | `/` | 搜索 |
-| `n` | 重复上次搜索，跳到下一个匹配 |
+| `n` | 跳到下一个匹配（高亮显示） |
+| `N` | 反向跳到上一个匹配 |
+| `p` / `:` | 按百分比跳转（如输入 `50`） |
 | `g` | 打开章节目录 |
+| `m` | 收藏/取消收藏当前位置 |
+| `M` | 打开收藏列表 |
+| `h` | 瞬时隐藏，再按任意键恢复 |
 | `q` | 正常退出并保存进度 |
 | `Esc` | **老板键** — 清屏并立即退出 |
 
@@ -121,9 +144,15 @@ tread novel.epub --mode comment --lines 2
 
 1. 按 `/` 呼出搜索框，底部出现 `/` 光标提示
 2. 输入关键词，支持任意文本（自动忽略大小写）
-3. 按 `Enter` 确认，跳转到第一个匹配行
-4. 按 `n` 继续搜索下一个匹配处
-5. 搜索框输入中按 `Esc` 可取消搜索
+3. 按 `Enter` 确认，跳转到第一个匹配行，命中内容高亮显示
+4. 按 `n` 继续搜索下一个匹配处，按 `N` 反向搜索
+5. 搜索失败或无匹配时，底部会短暂提示 "未找到: xxx"
+6. 搜索框输入中按 `Esc` 可取消搜索
+
+### 跳转进度
+
+1. 按 `p` 或 `:` 呼出跳转框，输入 `0-100` 的数字
+2. 按 `Enter` 跳转到对应百分比位置
 
 ### 章节目录
 
@@ -134,9 +163,11 @@ tread novel.epub --mode comment --lines 2
 
 > 章节列表支持滚动，即使小说有几十个章节也不会溢出显示区域。
 
-### 书签
+### 书签与收藏
 
 退出时自动保存阅读进度（行号、显示模式）到 `~/.config/terminal-read/bookmarks.json`。下次打开同一本书时自动续读。
+
+按 `m` 可在任意位置手动添加收藏，按 `M` 呼出收藏列表快速跳转。收藏数据与书签保存在同一目录。
 
 ### 编码
 
@@ -165,11 +196,12 @@ tread "novel.pdf"
 ## 特性亮点
 
 - **终端自适应** — 窗口大小改变时内容自动重新换行
-- **搜索缓存优化** — 大文件搜索不卡顿，自动忽略大小写
+- **搜索缓存优化** — 大文件搜索不卡顿，自动忽略大小写，命中高亮
 - **章节列表滚动** — 支持超长章节列表，以当前章节为中心显示
-- **Log 模式着色** — INFO/DEBUG/TRACE/WARN 分别用绿/青/灰/黄着色，更像真日志
+- **Log 模式着色** — INFO/DEBUG/TRACE/WARN 随机出现，带模块名与 trace id，更像真日志
 - **崩溃保护** — 即使程序异常退出，终端也会自动恢复原始状态
 - **类型安全书签** — 显示模式直接序列化枚举值，不再依赖数字索引
+- **保守安装** — install 脚本默认不覆盖已有 Cargo 配置，镜像配置需显式同意
 
 ## 技术栈
 

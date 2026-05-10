@@ -18,3 +18,4 @@ Thumbs.db
 # Novel files (copyrighted, not committed)
 /txt/
 *.txt
+!fixtures/*.txt
