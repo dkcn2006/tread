@@ -31,6 +31,7 @@ pub struct App {
     pub search_input: String,
     pub last_search: String,
     pub search_highlight: Option<String>,
+    pub search_highlight_ttl: u8,
     pub goto_input: String,
     pub chapter_cursor: usize,
     pub favorite_cursor: usize,
@@ -43,6 +44,14 @@ pub struct App {
     pub status_until: Option<Instant>,
 
     pub custom_template: Option<String>,
+
+    pub session_modules: Vec<String>,
+    pub session_pods: Vec<String>,
+    pub session_trace_ids: Vec<String>,
+    pub session_level_idxs: Vec<usize>,
+    pub session_npm_packages: Vec<String>,
+    pub session_pytest_files: Vec<String>,
+    pub session_commits: Vec<String>,
 }
 
 impl App {
@@ -52,10 +61,14 @@ impl App {
         let mut sub_offset = 0usize;
         let mut current_mode = mode;
 
+        let mut restored_display_lines = display_lines;
         if let Some(entry) = bookmarks.get(&book.file_path) {
             current_line = entry.line_index.min(book.lines.len().saturating_sub(1));
             sub_offset = entry.sub_offset;
             current_mode = entry.mode;
+            if entry.display_lines > 0 {
+                restored_display_lines = entry.display_lines;
+            }
         }
 
         App {
@@ -63,13 +76,14 @@ impl App {
             bookmarks,
             current_line,
             sub_offset,
-            display_lines: display_lines.clamp(1, 3),
+            display_lines: restored_display_lines.clamp(1, 3),
             terminal_width: 80,
             mode: current_mode,
             input_mode: InputMode::Normal,
             search_input: String::new(),
             last_search: String::new(),
             search_highlight: None,
+            search_highlight_ttl: 0,
             goto_input: String::new(),
             chapter_cursor: 0,
             favorite_cursor: 0,
@@ -79,6 +93,13 @@ impl App {
             status_message: None,
             status_until: None,
             custom_template: None,
+            session_modules: generate_session_modules(),
+            session_pods: generate_session_pods(),
+            session_trace_ids: generate_session_trace_ids(),
+            session_level_idxs: generate_session_levels(),
+            session_npm_packages: generate_session_npm_packages(),
+            session_pytest_files: generate_session_pytest_files(),
+            session_commits: generate_session_commits(),
         }
     }
 
@@ -146,6 +167,7 @@ impl App {
                 line_index: self.current_line,
                 sub_offset: self.sub_offset,
                 mode: self.mode,
+                display_lines: self.display_lines,
                 last_accessed: None, // set() will fill in current timestamp
             },
         );
@@ -174,19 +196,17 @@ impl App {
             KeyCode::Home => {
                 self.current_line = 0;
                 self.sub_offset = 0;
+                self.search_highlight = None;
             }
             KeyCode::End => {
                 self.current_line = self.book.lines.len().saturating_sub(1);
                 self.sub_offset = 0;
+                self.search_highlight = None;
             }
             KeyCode::Char('t') => self.mode = self.mode.next(),
             KeyCode::Char('/') => {
                 self.input_mode = InputMode::Search;
                 self.search_input.clear();
-            }
-            KeyCode::Char('p') | KeyCode::Char(':') => {
-                self.input_mode = InputMode::GotoPercent;
-                self.goto_input.clear();
             }
             KeyCode::Char('n') if !self.last_search.is_empty() => {
                 if let Some(idx) = self
@@ -196,6 +216,7 @@ impl App {
                     self.current_line = idx;
                     self.sub_offset = 0;
                     self.search_highlight = Some(self.last_search.clone());
+                    self.search_highlight_ttl = 5;
                 } else {
                     self.set_status(format!("未找到: {}", self.last_search), 2);
                 }
@@ -208,6 +229,7 @@ impl App {
                     self.current_line = idx;
                     self.sub_offset = 0;
                     self.search_highlight = Some(self.last_search.clone());
+                    self.search_highlight_ttl = 5;
                 } else {
                     self.set_status(format!("未找到: {}", self.last_search), 2);
                 }
@@ -256,6 +278,10 @@ impl App {
                         .unwrap_or(0);
                 }
             }
+            KeyCode::Char('p') | KeyCode::Char(':') => {
+                self.input_mode = InputMode::GotoPercent;
+                self.goto_input.clear();
+            }
             _ => {}
         }
     }
@@ -276,6 +302,7 @@ impl App {
                         self.current_line = idx;
                         self.sub_offset = 0;
                         self.search_highlight = Some(self.last_search.clone());
+                        self.search_highlight_ttl = 5;
                     } else {
                         self.set_status(format!("未找到: {}", self.search_input), 2);
                     }
@@ -320,15 +347,26 @@ impl App {
                 self.goto_input.pop();
             }
             KeyCode::Enter => {
-                if let Ok(percent) = self.goto_input.parse::<usize>() {
-                    let pct = percent.min(100);
-                    let total = self.book.lines.len();
-                    if total > 0 {
-                        self.current_line = ((pct * total) / 100).min(total - 1);
-                        self.sub_offset = 0;
+                let trimmed = self.goto_input.trim().trim_end_matches('%');
+                match trimmed.parse::<usize>() {
+                    Ok(percent) if percent <= 100 => {
+                        let total = self.book.lines.len();
+                        if total > 0 {
+                            self.current_line =
+                                ((percent * total) / 100).min(total.saturating_sub(1));
+                            self.sub_offset = 0;
+                        }
+                        self.input_mode = InputMode::Normal;
+                    }
+                    Ok(_) => {
+                        self.set_status("请输入 0-100 之间的数字", 2);
+                        self.input_mode = InputMode::Normal;
+                    }
+                    Err(_) => {
+                        self.set_status("无效输入", 2);
+                        self.input_mode = InputMode::Normal;
                     }
                 }
-                self.input_mode = InputMode::Normal;
             }
             KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
@@ -364,11 +402,22 @@ impl App {
         for _ in 0..n {
             self.next_display_line(content_width);
         }
+        self.dec_highlight_ttl(n);
     }
 
     fn prev_lines(&mut self, n: usize, content_width: usize) {
         for _ in 0..n {
             self.prev_display_line(content_width);
+        }
+        self.dec_highlight_ttl(n);
+    }
+
+    fn dec_highlight_ttl(&mut self, n: usize) {
+        if self.search_highlight_ttl > 0 {
+            self.search_highlight_ttl = self.search_highlight_ttl.saturating_sub(n as u8);
+            if self.search_highlight_ttl == 0 {
+                self.search_highlight = None;
+            }
         }
     }
 
@@ -443,4 +492,83 @@ impl App {
             }
         }
     }
+}
+
+fn generate_session_modules() -> Vec<String> {
+    let modules = [
+        "app", "db", "api", "worker", "cache", "gateway", "auth", "queue",
+    ];
+    let mut rng = rand::thread_rng();
+    (0..50)
+        .map(|_| modules[rand::Rng::gen_range(&mut rng, 0..modules.len())].to_string())
+        .collect()
+}
+
+fn generate_session_pods() -> Vec<String> {
+    let mut rng = rand::thread_rng();
+    (0..50)
+        .map(|_| format!("pod-{:04x}", rand::Rng::gen::<u16>(&mut rng)))
+        .collect()
+}
+
+fn generate_session_trace_ids() -> Vec<String> {
+    let mut rng = rand::thread_rng();
+    (0..50)
+        .map(|_| format!("{:08x}", rand::Rng::gen::<u32>(&mut rng)))
+        .collect()
+}
+
+fn generate_session_levels() -> Vec<usize> {
+    let mut rng = rand::thread_rng();
+    (0..50)
+        .map(|_| rand::Rng::gen_range(&mut rng, 0..4usize))
+        .collect()
+}
+
+fn generate_session_npm_packages() -> Vec<String> {
+    let packages = [
+        "axios",
+        "lodash",
+        "react",
+        "vue",
+        "express",
+        "webpack",
+        "typescript",
+        "eslint",
+        "prettier",
+        "jest",
+        "vite",
+        "tailwindcss",
+        "next",
+        "nuxt",
+        "astro",
+    ];
+    let mut rng = rand::thread_rng();
+    (0..50)
+        .map(|_| packages[rand::Rng::gen_range(&mut rng, 0..packages.len())].to_string())
+        .collect()
+}
+
+fn generate_session_pytest_files() -> Vec<String> {
+    let files = [
+        "test_user",
+        "test_api",
+        "test_auth",
+        "test_db",
+        "test_cache",
+        "test_queue",
+        "test_payment",
+        "test_search",
+    ];
+    let mut rng = rand::thread_rng();
+    (0..50)
+        .map(|_| files[rand::Rng::gen_range(&mut rng, 0..files.len())].to_string())
+        .collect()
+}
+
+fn generate_session_commits() -> Vec<String> {
+    let mut rng = rand::thread_rng();
+    (0..50)
+        .map(|_| format!("{:07x}", rand::Rng::gen::<u32>(&mut rng)))
+        .collect()
 }

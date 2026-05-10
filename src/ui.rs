@@ -9,8 +9,6 @@ use ratatui::{
 use crate::app::{App, InputMode};
 use crate::config::DisplayMode;
 use chrono::Local;
-use rand::seq::SliceRandom;
-use rand::Rng;
 use unicode_width::UnicodeWidthStr;
 
 fn highlight_spans(text: &str, highlight: Option<&str>) -> Vec<Span<'static>> {
@@ -100,15 +98,16 @@ fn render_log(frame: &mut Frame, app: &App) {
     );
 
     let mut now = Local::now();
-    let mut rng = rand::thread_rng();
     let levels = ["INFO", "DEBUG", "TRACE", "WARN"];
     let level_colors = [Color::Green, Color::Cyan, Color::Gray, Color::Yellow];
 
     let text_lines: Vec<Line> = lines
         .into_iter()
-        .map(|content| {
+        .enumerate()
+        .map(|(i, content)| {
             let timestamp = now.format("%Y-%m-%d %H:%M:%S").to_string();
-            let level_idx = rng.gen_range(0..4);
+            let level_idx =
+                app.session_level_idxs[(app.current_line + i) % app.session_level_idxs.len()];
             let level = levels[level_idx];
             let level_color = level_colors[level_idx];
             now += chrono::Duration::seconds(1);
@@ -234,11 +233,11 @@ fn render_git_log(frame: &mut Frame, app: &App) {
         content_width.max(1),
     );
 
-    let mut rng = rand::thread_rng();
     let text_lines: Vec<Line> = lines
         .into_iter()
-        .map(|content| {
-            let hash = format!("{:07x}", rng.gen::<u32>());
+        .enumerate()
+        .map(|(i, content)| {
+            let hash = &app.session_commits[(app.current_line + i) % app.session_commits.len()];
             let mut spans = vec![Span::styled(
                 format!("{} | ", hash),
                 Style::default().fg(Color::DarkGray),
@@ -277,7 +276,12 @@ fn render_npm_install(frame: &mut Frame, app: &App) {
         .enumerate()
         .map(|(i, content)| {
             let (pfx, color) = prefixes[i % prefixes.len()];
-            let mut spans = vec![Span::styled(pfx.to_string(), Style::default().fg(color))];
+            let pkg =
+                &app.session_npm_packages[(app.current_line + i) % app.session_npm_packages.len()];
+            let mut spans = vec![Span::styled(
+                format!("{}{} ", pfx, pkg),
+                Style::default().fg(color),
+            )];
             spans.extend(highlight_spans(&content, app.search_highlight.as_deref()));
             Line::from(spans)
         })
@@ -300,19 +304,18 @@ fn render_pytest(frame: &mut Frame, app: &App) {
         content_width.max(1),
     );
 
-    let mut rng = rand::thread_rng();
     let results = [("PASSED", Color::Green), ("FAILED", Color::Red)];
 
     let text_lines: Vec<Line> = lines
         .into_iter()
-        .map(|content| {
-            let test_name = format!("test_{:03}", rng.gen_range(0..1000));
-            let (result, color) = results[rng.gen_range(0..2)];
+        .enumerate()
+        .map(|(i, content)| {
+            let file =
+                &app.session_pytest_files[(app.current_line + i) % app.session_pytest_files.len()];
+            let test_name = format!("test_{:03}", (app.current_line + i) % 1000);
+            let (result, color) = results[(app.current_line + i) % results.len()];
             let mut spans = vec![
-                Span::styled(
-                    "test_app.py::".to_string(),
-                    Style::default().fg(Color::DarkGray),
-                ),
+                Span::styled(format!("{}::", file), Style::default().fg(Color::DarkGray)),
                 Span::styled(format!("{} ", test_name), Style::default()),
                 Span::styled(format!("{} ", result), Style::default().fg(color)),
             ];
@@ -339,19 +342,19 @@ fn render_docker_logs(frame: &mut Frame, app: &App) {
     );
 
     let mut now = Local::now();
-    let mut rng = rand::thread_rng();
     let levels = ["INFO", "DEBUG", "TRACE", "WARN"];
     let level_colors = [Color::Green, Color::Cyan, Color::Gray, Color::Yellow];
-    let modules = ["app", "db", "api", "worker", "cache"];
 
     let text_lines: Vec<Line> = lines
         .into_iter()
-        .map(|content| {
+        .enumerate()
+        .map(|(i, content)| {
             let timestamp = now.format("%Y-%m-%d %H:%M:%S").to_string();
-            let level_idx = rng.gen_range(0..4);
+            let level_idx =
+                app.session_level_idxs[(app.current_line + i) % app.session_level_idxs.len()];
             let level = levels[level_idx];
             let level_color = level_colors[level_idx];
-            let module = modules.choose(&mut rng).unwrap();
+            let module = &app.session_modules[(app.current_line + i) % app.session_modules.len()];
             now += chrono::Duration::seconds(1);
 
             let mut spans = vec![
@@ -388,18 +391,19 @@ fn render_kubectl_logs(frame: &mut Frame, app: &App) {
     );
 
     let mut now = Local::now();
-    let mut rng = rand::thread_rng();
     let levels = ["INFO", "DEBUG", "TRACE", "WARN"];
     let level_colors = [Color::Green, Color::Cyan, Color::Gray, Color::Yellow];
 
     let text_lines: Vec<Line> = lines
         .into_iter()
-        .map(|content| {
+        .enumerate()
+        .map(|(i, content)| {
             let timestamp = now.format("%Y-%m-%dT%H:%M:%SZ").to_string();
-            let level_idx = rng.gen_range(0..4);
+            let level_idx =
+                app.session_level_idxs[(app.current_line + i) % app.session_level_idxs.len()];
             let level = levels[level_idx];
             let level_color = level_colors[level_idx];
-            let pod = format!("pod-{:04x}", rng.gen::<u16>());
+            let pod = &app.session_pods[(app.current_line + i) % app.session_pods.len()];
             now += chrono::Duration::seconds(1);
 
             let mut spans = vec![
@@ -438,29 +442,31 @@ fn render_custom_template(frame: &mut Frame, app: &App, tmpl: &str) {
     );
 
     let mut now = Local::now();
-    let mut rng = rand::thread_rng();
     let levels = ["INFO", "DEBUG", "TRACE", "WARN"];
-    let modules = ["app", "db", "api", "worker", "cache"];
 
     let text_lines: Vec<Line> = lines
         .into_iter()
-        .map(|content| {
+        .enumerate()
+        .map(|(i, content)| {
             let timestamp = now.format("%Y-%m-%d %H:%M:%S").to_string();
-            let level = levels[rng.gen_range(0..4)];
-            let module = modules.choose(&mut rng).unwrap();
-            let trace_id = format!("{:08x}", rng.gen::<u32>());
+            let level_idx =
+                app.session_level_idxs[(app.current_line + i) % app.session_level_idxs.len()];
+            let level = levels[level_idx];
+            let module = &app.session_modules[(app.current_line + i) % app.session_modules.len()];
+            let trace_id =
+                &app.session_trace_ids[(app.current_line + i) % app.session_trace_ids.len()];
             now += chrono::Duration::seconds(1);
 
             let expanded_prefix = prefix
                 .replace("{time}", &timestamp)
                 .replace("{level}", level)
                 .replace("{module}", module)
-                .replace("{trace_id}", &trace_id);
+                .replace("{trace_id}", trace_id);
             let expanded_suffix = suffix
                 .replace("{time}", &timestamp)
                 .replace("{level}", level)
                 .replace("{module}", module)
-                .replace("{trace_id}", &trace_id);
+                .replace("{trace_id}", trace_id);
 
             let mut spans = vec![Span::raw(expanded_prefix)];
             spans.extend(highlight_spans(&content, app.search_highlight.as_deref()));
@@ -578,17 +584,43 @@ fn render_chapter_list(frame: &mut Frame, app: &mut App) {
     render_list_overlay(frame, items, app.chapter_cursor, area);
 }
 
+fn chapter_and_pct(app: &App, line: usize) -> (usize, f64) {
+    let total = app.book.lines.len();
+    let pct = if total > 0 {
+        (line as f64 / total as f64) * 100.0
+    } else {
+        0.0
+    };
+    let ch = app
+        .book
+        .chapters
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(_, ch)| ch.line_index <= line)
+        .map(|(i, _)| i + 1)
+        .unwrap_or(0);
+    (ch, pct)
+}
+
 fn render_favorite_list(frame: &mut Frame, app: &mut App) {
     let area = frame.area();
     let favs = app.bookmarks.favorites(&app.book.file_path);
     let items = favs.iter().enumerate().map(|(i, &line)| {
         let text = app.book.lines.get(line).cloned().unwrap_or_default();
-        let label = if text.len() > 40 {
-            format!("{}...", &text[..40])
+        let label: String = text.chars().take(30).collect();
+        let label = if text.chars().count() > 30 {
+            format!("{}...", label)
         } else {
-            text
+            label
         };
-        (i, format!("第{}行: {}", line + 1, label))
+        let (ch, pct) = chapter_and_pct(app, line);
+        let suffix = if ch > 0 {
+            format!(" [Ch.{} | {:.1}%]", ch, pct)
+        } else {
+            format!(" [{:.1}%]", pct)
+        };
+        (i, format!("第{}行{} | {}", line + 1, suffix, label))
     });
     render_list_overlay(frame, items, app.favorite_cursor, area);
 }

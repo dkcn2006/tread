@@ -19,6 +19,7 @@ dirs = "6"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 regex = "1"
 rand = "0.8"
+toml = "0.8"
 mobi = "0.8"
 pdf-extract = "0.10"
 epub = "1.2"

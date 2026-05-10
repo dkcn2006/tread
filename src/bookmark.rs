@@ -8,7 +8,8 @@ pub struct BookmarkEntry {
     pub line_index: usize,
     pub sub_offset: usize,
     pub mode: DisplayMode,
-    /// Unix timestamp in seconds
+    pub display_lines: usize,
+    /// Unix timestamp in milliseconds
     pub last_accessed: Option<u64>,
 }
 
@@ -73,6 +74,11 @@ impl Bookmarks {
         self.favorites.get(file_path).cloned().unwrap_or_default()
     }
 
+    pub fn remove(&mut self, file_path: &str) {
+        self.entries.remove(file_path);
+        self.favorites.remove(file_path);
+    }
+
     pub fn set(&mut self, file_path: &str, mut entry: BookmarkEntry) {
         entry.last_accessed = Some(
             SystemTime::now()
@@ -110,6 +116,7 @@ mod tests {
                 line_index: 42,
                 sub_offset: 3,
                 mode: DisplayMode::Log,
+                display_lines: 1,
                 last_accessed: Some(1000),
             },
         );
@@ -119,6 +126,7 @@ mod tests {
                 line_index: 100,
                 sub_offset: 0,
                 mode: DisplayMode::Comment,
+                display_lines: 1,
                 last_accessed: Some(2000),
             },
         );
@@ -155,6 +163,7 @@ mod tests {
                 line_index: 1,
                 sub_offset: 0,
                 mode: DisplayMode::Minimal,
+                display_lines: 1,
                 last_accessed: None,
             },
         );
@@ -165,6 +174,7 @@ mod tests {
                 line_index: 99,
                 sub_offset: 2,
                 mode: DisplayMode::Log,
+                display_lines: 1,
                 last_accessed: None,
             },
         );
@@ -186,6 +196,7 @@ mod tests {
                 line_index: 0,
                 sub_offset: 0,
                 mode: DisplayMode::Comment,
+                display_lines: 1,
                 last_accessed: Some(0),
             },
         );
@@ -213,6 +224,7 @@ mod tests {
                 line_index: 1,
                 sub_offset: 0,
                 mode: DisplayMode::Minimal,
+                display_lines: 1,
                 last_accessed: None,
             },
         );
@@ -223,6 +235,7 @@ mod tests {
                 line_index: 3,
                 sub_offset: 0,
                 mode: DisplayMode::Minimal,
+                display_lines: 1,
                 last_accessed: None,
             },
         );
@@ -233,6 +246,7 @@ mod tests {
                 line_index: 2,
                 sub_offset: 0,
                 mode: DisplayMode::Minimal,
+                display_lines: 1,
                 last_accessed: None,
             },
         );

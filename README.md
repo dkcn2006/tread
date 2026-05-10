@@ -65,20 +65,12 @@ cd tread
 cargo install --path .
 ```
 
-### cargo install（发布到 crates.io 后）
+### 计划支持（尚未发布）
 
-```bash
-cargo install tread
-```
+- **cargo install**：发布到 crates.io 后可直接 `cargo install tread`
+- **Homebrew**：发布后可创建个人 tap `brew tap your-username/tread && brew install tread`
 
-### Homebrew（创建个人 tap）
-
-```bash
-brew tap your-username/tread
-brew install tread
-```
-
-> 如果你想发布自己的 Homebrew tap，可参考 [Homebrew 官方文档](https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap) 创建 `homebrew-tread` 仓库并提交 Formula。
+> 当前阶段请使用源码安装。如果你想提前了解发布流程，可参考 [Homebrew 官方文档](https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap)。
 
 ## 伪装模式
 

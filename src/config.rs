@@ -1,5 +1,6 @@
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]
 pub enum DisplayMode {
@@ -32,6 +33,24 @@ impl DisplayMode {
             DisplayMode::Pytest => DisplayMode::DockerLogs,
             DisplayMode::DockerLogs => DisplayMode::KubectlLogs,
             DisplayMode::KubectlLogs => DisplayMode::Log,
+        }
+    }
+}
+
+impl FromStr for DisplayMode {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "log" => Ok(DisplayMode::Log),
+            "minimal" => Ok(DisplayMode::Minimal),
+            "comment" => Ok(DisplayMode::Comment),
+            "gitlog" => Ok(DisplayMode::GitLog),
+            "npm_install" | "npminstall" | "npm" => Ok(DisplayMode::NpmInstall),
+            "pytest" => Ok(DisplayMode::Pytest),
+            "dockerlogs" | "docker" => Ok(DisplayMode::DockerLogs),
+            "kubectllogs" | "kubectl" => Ok(DisplayMode::KubectlLogs),
+            _ => Err(format!("unknown display mode: {}", s)),
         }
     }
 }
